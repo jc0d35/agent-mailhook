@@ -1,0 +1,21 @@
+{
+  "name": "agent-mailhook",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --test index.test.mjs && npm run dry-run -- --env development --outdir dist && node --test runtime.test.mjs",
+    "dev": "wrangler dev --ip 127.0.0.1",
+    "dry-run": "wrangler deploy --dry-run",
+    "replay": "node replay.mjs"
+  },
+  "dependencies": {
+    "postal-mime": "4.1.4"
+  },
+  "devDependencies": {
+    "miniflare": "5.20261019.2-beta",
+    "wrangler": "4.152.0"
+  }
+}
