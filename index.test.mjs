@@ -22,14 +22,14 @@ const mime = () =>
       '<p>Hello <b>guest</b></p>',
       '--outer',
       'Content-Type: application/pdf',
-      'Content-Disposition: attachment; filename="receipt.pdf"',
+      'Content-Disposition: attachment',
       'Content-Transfer-Encoding: base64',
       '',
       'JVBERi0xLjc=',
       '--outer',
       'Content-Type: image/png',
       'Content-ID: <logo>',
-      'Content-Disposition: inline; filename="logo.png"',
+      'Content-Disposition: inline',
       'Content-Transfer-Encoding: base64',
       '',
       'iVBORw0KGgo=',
@@ -81,11 +81,8 @@ test('preserves HTML and binary files, including inline parts, in MIME order', a
     assert.match(form.get('html'), /<p>Hello <b>guest<\/b><\/p>/);
     const files = form.getAll('attachments');
     assert.deepEqual(
-      files.map((file) => [file.name, file.type]),
-      [
-        ['receipt.pdf', 'application/pdf'],
-        ['logo.png', 'image/png'],
-      ],
+      files.map((file) => file.type),
+      ['application/pdf', 'image/png'],
     );
     assert.equal(await files[0].text(), '%PDF-1.7');
     assert.deepEqual(
@@ -131,7 +128,7 @@ test('subjectless, attachment-only email stays attachment-only', async () => {
   });
   await deliver(
     new TextEncoder().encode(
-      'From: guest@example.com\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename=receipt.pdf\r\n\r\n%PDF-1.7',
+      'From: guest@example.com\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment\r\n\r\n%PDF-1.7',
     ),
     env,
   );
@@ -194,7 +191,7 @@ test('refuses missing sender, excessive body fields and too many attachments bef
   const parts = Array.from(
     { length: 101 },
     () =>
-      '--files\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename=file.pdf\r\n\r\n%PDF-1.7\r\n',
+      '--files\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment\r\n\r\n%PDF-1.7\r\n',
   ).join('');
   await assert.rejects(
     deliver(

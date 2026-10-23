@@ -6,7 +6,7 @@ A stateless Cloudflare Email Worker that turns incoming MIME messages into an au
 
 The Worker accepts mail for `MAILHOOK_RECIPIENT`, parses MIME with `postal-mime`, and makes one HTTPS POST to `BACKEND_WEBHOOK_URL`. It authenticates with `X-Api-Key` using the `EMAIL_WEBHOOK_API_KEY` secret.
 
-The multipart request contains `senderAddress`, optional `replyTo`, `subject` (possibly empty), optional `html`, `text` and `date`, and `externalId`. Repeated binary `attachments` parts preserve MIME order and filenames, including inline files. Sender identity comes from the original header, not a forwarding server's SMTP envelope. Remote content is never fetched.
+The multipart request contains `senderAddress`, optional `replyTo`, `subject` (possibly empty), optional `html`, `text` and `date`, and `externalId`. Repeated binary `attachments` parts preserve MIME order, including inline files. Sender identity comes from the original header, not a forwarding server's SMTP envelope. Remote content is never fetched.
 
 `externalId` is `mailhook.` followed by SHA-256 of the normalized sender, a NUL separator and Message-ID. Without Message-ID, it hashes the raw message; replay identical raw bytes for the same identity. The receiver must deduplicate this id and tolerate replay after partial processing. Its success response should acknowledge completed processing, including supported attachments. Business routing, attachment policy and persistence belong to the receiver.
 

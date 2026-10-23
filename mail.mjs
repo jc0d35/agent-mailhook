@@ -66,7 +66,6 @@ export async function deliver(raw, env) {
     body.append(
       'attachments',
       new Blob([part.content], { type: part.mimeType }),
-      part.filename || 'attachment',
     );
   let response;
   try {
