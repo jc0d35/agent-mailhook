@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "agent-mailhook",
+  "main": "index.mjs",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "env": {
+    "development": {
+      "name": "agent-mailhook-development",
+      "vars": {
+        "MAILHOOK_RECIPIENT": "ingest@example.com",
+        "BACKEND_WEBHOOK_URL": "https://receiver.example.com/email/webhook",
+      },
+    },
+    "production": {
+      "name": "agent-mailhook-production",
+      "vars": {
+        "MAILHOOK_RECIPIENT": "ingest@example.com",
+        "BACKEND_WEBHOOK_URL": "https://receiver.example.com/email/webhook",
+      },
+    },
+  },
+}

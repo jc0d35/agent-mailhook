@@ -1,0 +1,9 @@
+# Synthetic local bindings only. Copy to .dev.vars.development.
+MAILHOOK_RECIPIENT="ingest@example.com"
+BACKEND_WEBHOOK_URL="http://127.0.0.1:8788/email/webhook"
+EMAIL_WEBHOOK_API_KEY="local-development-key"
+# Optional overrides:
+# WEBHOOK_AUTH_HEADER="Authorization"
+# WEBHOOK_AUTH_PREFIX="Bearer "
+# WEBHOOK_TIMEOUT_MS="60000"
+# MAILHOOK_MAX_BYTES="26214400"
