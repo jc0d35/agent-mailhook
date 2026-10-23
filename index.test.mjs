@@ -280,3 +280,92 @@ test('failure logs and thrown errors do not expose parser or backend data', asyn
     /private|secret|guest@example/,
   );
 });
+
+test('configured bearer authentication and timeout reach the webhook without changing the payload', async () => {
+  const timeout = mock.method(AbortSignal, 'timeout', () => new AbortController().signal);
+  const fetch = mock.method(globalThis, 'fetch', async (url, options) => {
+    const request = new Request(url, options);
+    assert.equal(request.headers.get('authorization'), 'Bearer synthetic-key');
+    assert.equal(request.headers.get('x-api-key'), null);
+    assert.equal((await request.formData()).get('senderAddress'), 'guest@example.com');
+    return new Response(null, { status: 204 });
+  });
+  await deliver(raw(), {
+    ...env,
+    WEBHOOK_AUTH_HEADER: 'Authorization',
+    WEBHOOK_AUTH_PREFIX: 'Bearer ',
+    WEBHOOK_TIMEOUT_MS: '15000',
+  });
+  assert.equal(timeout.mock.calls[0].arguments[0], 15000);
+  assert.equal(fetch.mock.callCount(), 1);
+});
+
+test('a recipient list accepts exact aliases with case and whitespace normalization', async () => {
+  mock.method(console, 'log', () => {});
+  const fetch = mock.method(globalThis, 'fetch', async () => new Response());
+  const bytes = raw();
+  const settings = { ...env, MAILHOOK_RECIPIENT: ' first@example.com, SECOND@example.com ' };
+  for (const to of ['first@example.com', 'SECOND@example.com', 'first+tag@example.com', 'third@example.com']) {
+    let rejected = false;
+    await worker.email({
+      to, rawSize: bytes.length, raw: new Blob([bytes]).stream(),
+      setReject: () => { rejected = true; },
+    }, settings);
+    assert.equal(rejected, to.includes('+tag') || to === 'third@example.com');
+  }
+  assert.equal(fetch.mock.callCount(), 2);
+});
+
+test('a lower byte limit rejects before reading the stream and also applies to replay delivery', async () => {
+  const settings = { ...env, MAILHOOK_MAX_BYTES: '16' };
+  let rejected;
+  const fetch = mock.method(globalThis, 'fetch', async () => new Response());
+  await worker.email({
+    to: env.MAILHOOK_RECIPIENT, rawSize: 17,
+    get raw() { throw new Error('must not read'); },
+    setReject: (reason) => { rejected = reason; },
+  }, settings);
+  assert.equal(rejected, 'Message exceeds the supported size');
+  await assert.rejects(deliver(raw(), settings), /mailhook-size/);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+test('invalid optional configuration fails closed without sending a request', async () => {
+  const fetch = mock.method(globalThis, 'fetch', async () => new Response());
+  for (const settings of [
+    { WEBHOOK_AUTH_HEADER: 'Content-Type' },
+    { WEBHOOK_AUTH_HEADER: 'Host' },
+    { WEBHOOK_AUTH_HEADER: '' },
+    { WEBHOOK_AUTH_PREFIX: 'Bearer\r\nInjected: ' },
+    { EMAIL_WEBHOOK_API_KEY: '   ' },
+    { EMAIL_WEBHOOK_API_KEY: 'key\nInjected: value' },
+    { WEBHOOK_TIMEOUT_MS: '0' },
+    { WEBHOOK_TIMEOUT_MS: '60001' },
+    { WEBHOOK_TIMEOUT_MS: '1.5' },
+    { MAILHOOK_MAX_BYTES: '0' },
+    { MAILHOOK_MAX_BYTES: String(MAX_EMAIL_BYTES + 1) },
+    { MAILHOOK_MAX_BYTES: '' },
+    { BACKEND_WEBHOOK_URL: 'https://receiver.example/hook#fragment' },
+    { BACKEND_WEBHOOK_URL: 'http://localhost.example/hook' },
+    { BACKEND_WEBHOOK_URL: 'http://192.168.1.1/hook' },
+  ]) await assert.rejects(deliver(raw(), { ...env, ...settings }), /mailhook-configuration/);
+  assert.equal(fetch.mock.callCount(), 0);
+});
+
+test('invalid recipient lists never read or deliver mail', async () => {
+  mock.method(console, 'error', () => {});
+  for (const MAILHOOK_RECIPIENT of ['*', '*@example.com', 'inbox@example.com,', 'inbox@example.com other@example.com']) {
+    await assert.rejects(worker.email({
+      to: 'inbox@example.com',
+      get raw() { throw new Error('must not read'); },
+    }, { ...env, MAILHOOK_RECIPIENT }), /mailhook-delivery-failed/);
+  }
+});
+
+test('HTTP is supported only for the loopback receiver example', async () => {
+  const fetch = mock.method(globalThis, 'fetch', async () => new Response());
+  for (const host of ['127.0.0.1', 'localhost', '[::1]']) {
+    await deliver(raw(), { ...env, BACKEND_WEBHOOK_URL: `http://${host}:8788/email/webhook` });
+  }
+  assert.equal(fetch.mock.callCount(), 3);
+});

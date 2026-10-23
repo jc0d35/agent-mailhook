@@ -1,24 +1,12 @@
 import PostalMime from 'postal-mime';
-
-export const MAX_EMAIL_BYTES = 25 * 1024 * 1024;
+import { deliveryConfiguration } from './config.mjs';
+export { MAX_EMAIL_BYTES } from './limits.mjs';
 
 export class DeliveryError extends Error {
   constructor(reason, externalId) {
     super(reason);
     this.externalId = externalId;
   }
-}
-
-function configuration(env) {
-  const endpoint = new URL(env.BACKEND_WEBHOOK_URL);
-  if (
-    endpoint.protocol !== 'https:' ||
-    endpoint.username ||
-    endpoint.password ||
-    !env.EMAIL_WEBHOOK_API_KEY
-  )
-    throw new Error('mailhook-configuration');
-  return endpoint;
 }
 
 async function digest(bytes) {
@@ -30,8 +18,8 @@ async function digest(bytes) {
 
 /** Also used by operator replay; all business decisions belong to the backend. */
 export async function deliver(raw, env) {
-  const endpoint = configuration(env);
-  if (!raw.byteLength || raw.byteLength > MAX_EMAIL_BYTES)
+  const config = deliveryConfiguration(env);
+  if (!raw.byteLength || raw.byteLength > config.maximumBytes)
     throw new Error('mailhook-size');
   const mail = await PostalMime.parse(raw, {
     maxHeadersSize: 65536,
@@ -69,13 +57,13 @@ export async function deliver(raw, env) {
     );
   let response;
   try {
-    response = await fetch(endpoint, {
+    response = await fetch(config.endpoint, {
       method: 'POST',
-      headers: { 'X-Api-Key': env.EMAIL_WEBHOOK_API_KEY },
+      headers: config.headers,
       body,
       // Workers support follow/manual; rejecting non-2xx below also refuses redirects.
       redirect: 'manual',
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(config.timeout),
     });
   } catch {
     throw new DeliveryError('mailhook-transport', externalId);

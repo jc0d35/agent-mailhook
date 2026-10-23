@@ -1,12 +1,24 @@
 {
   "name": "agent-mailhook",
+  "version": "1.0.0",
+  "description": "A configurable, stateless Cloudflare Email Worker template for authenticated email-to-webhook delivery.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jc0d35/agent-mailhook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jc0d35/agent-mailhook/issues"
+  },
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "check": "node --test index.test.mjs && npm run dry-run -- --env development --outdir dist && node --test runtime.test.mjs",
+    "check": "npm test && npm run dry-run -- --env development --outdir dist && node --test runtime.test.mjs",
+    "test": "node --test index.test.mjs receiver.test.mjs",
+    "receiver": "node examples/receiver.mjs",
     "dev": "wrangler dev --ip 127.0.0.1",
     "dry-run": "wrangler deploy --dry-run",
     "replay": "node replay.mjs"

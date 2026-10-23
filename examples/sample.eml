@@ -1,0 +1,20 @@
+From: Example Sender <sender@example.com>
+To: ingest@example.com
+Reply-To: replies@example.com
+Message-ID: <mailhook-synthetic-example@example.com>
+Date: Fri, 23 Oct 2026 12:00:00 +0000
+Subject: Hello from agent-mailhook
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="mailhook-example"
+
+--mailhook-example
+Content-Type: text/plain; charset=utf-8
+
+A synthetic email for the local mailhook example.
+--mailhook-example
+Content-Type: application/octet-stream
+Content-Disposition: attachment
+Content-Transfer-Encoding: base64
+
+SGVsbG8sIG1haWxob29rIQo=
+--mailhook-example--

@@ -1,16 +1,17 @@
-import { deliver, DeliveryError, MAX_EMAIL_BYTES } from './mail.mjs';
+import { deliver, DeliveryError } from './mail.mjs';
+import { maximumBytes, recipients } from './config.mjs';
 
 export default {
   async email(message, env) {
     try {
-      const recipient = env.MAILHOOK_RECIPIENT?.trim().toLowerCase();
-      if (!recipient) throw new Error('mailhook-configuration');
-      if (message.to.toLowerCase() !== recipient)
+      const accepted = recipients(env);
+      const sizeLimit = maximumBytes(env);
+      if (!accepted.has(message.to.toLowerCase()))
         return message.setReject('Unknown recipient');
       if (
         !Number.isSafeInteger(message.rawSize) ||
         message.rawSize < 1 ||
-        message.rawSize > MAX_EMAIL_BYTES
+        message.rawSize > sizeLimit
       )
         return message.setReject('Message exceeds the supported size');
       const externalId = await deliver(
